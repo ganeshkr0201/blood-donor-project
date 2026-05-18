@@ -93,12 +93,12 @@ pipeline {
             }
         }
 
-        // STAGE 6: Deploy using Docker Compose
+        // STAGE 6: Deploy app containers using Docker Compose
+        // We specify service names explicitly so Jenkins never tries to restart itself
         stage('Deploy') {
             steps {
                 echo 'Deploying with Docker Compose...'
-                sh 'docker compose -f /workspace/docker-compose.yml down --remove-orphans || true'
-                sh 'docker compose -f /workspace/docker-compose.yml up -d --build'
+                sh 'docker compose -f /workspace/docker-compose.yml up -d --build postgres backend frontend'
                 sh 'sleep 15'
                 sh 'docker compose -f /workspace/docker-compose.yml ps'
             }
@@ -128,8 +128,8 @@ pipeline {
             echo 'SUCCESS! App is running at http://localhost:3000'
         }
         failure {
-            echo 'FAILED! Stopping containers...'
-            sh 'docker compose -f /workspace/docker-compose.yml down || true'
+            echo 'FAILED! Stopping app containers...'
+            sh 'docker compose -f /workspace/docker-compose.yml stop postgres backend frontend || true'
         }
         always {
             // Clean up workspace after every build
