@@ -97,10 +97,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying with Docker Compose...'
-                sh 'docker compose down --remove-orphans || true'
-                sh 'docker compose up -d --build'
+                sh 'docker compose -f /workspace/docker-compose.yml down --remove-orphans || true'
+                sh 'docker compose -f /workspace/docker-compose.yml up -d --build'
                 sh 'sleep 15'
-                sh 'docker compose ps'
+                sh 'docker compose -f /workspace/docker-compose.yml ps'
             }
         }
 
@@ -129,7 +129,7 @@ pipeline {
         }
         failure {
             echo 'FAILED! Stopping containers...'
-            sh 'docker compose down || true'
+            sh 'docker compose -f /workspace/docker-compose.yml down || true'
         }
         always {
             // Clean up workspace after every build
