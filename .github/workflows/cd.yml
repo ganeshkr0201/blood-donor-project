@@ -1,9 +1,8 @@
 name: CD — Push to Docker Hub
 
-# This workflow only runs when:
-# 1. A push lands on main branch
-# 2. Docker Hub secrets are configured in GitHub repo settings
-# Jenkins handles local deployment — this pushes images to Docker Hub for cloud use
+# Runs on every push to main
+# Builds Docker images and pushes them to Docker Hub
+# Requires DOCKER_HUB_USERNAME and DOCKER_HUB_TOKEN in GitHub Secrets
 
 on:
   push:
@@ -13,11 +12,6 @@ jobs:
   docker-push:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
-
-    # Only run if Docker Hub secrets are set — prevents failure when not configured
-    if: |
-      vars.DOCKER_HUB_USERNAME != '' ||
-      secrets.DOCKER_HUB_USERNAME != ''
 
     steps:
       - name: Checkout code
@@ -57,5 +51,6 @@ jobs:
       - name: Summary
         run: |
           echo "### Docker Images Pushed ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/blooddonor-backend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/blooddonor-frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/blooddonor-backend:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/blooddonor-frontend:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
