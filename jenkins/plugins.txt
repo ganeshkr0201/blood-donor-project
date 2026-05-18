@@ -1,0 +1,12 @@
+git
+workflow-aggregator
+pipeline-stage-view
+docker-workflow
+maven-plugin
+nodejs
+credentials-binding
+blueocean
+github
+ws-cleanup
+timestamper
+ansicolor
