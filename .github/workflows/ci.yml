@@ -1,4 +1,7 @@
-name: CI/CD Pipeline — Blood Donor System
+name: CI — Build & Test
+
+# GitHub Actions = CI (Continuous Integration): build + test on every push
+# Jenkins = CD (Continuous Deployment): deploys locally via Docker Compose
 
 on:
   push:
@@ -6,31 +9,12 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  REGISTRY: docker.io
-  BACKEND_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/blooddonor-backend
-  FRONTEND_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/blooddonor-frontend
-
 jobs:
-  # ── Backend: Build & Test ────────────────────────────────────────────────────
+  # ── Job 1: Backend Build & Test ──────────────────────────────────────────────
   backend-ci:
     name: Backend — Build & Test
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: blooddonordb_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No postgres service needed — tests use H2 in-memory database
 
     steps:
       - name: Checkout code
@@ -43,21 +27,15 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven
+      - name: Compile
         working-directory: ./backend
         run: mvn clean compile -B
 
-      - name: Run tests
+      - name: Run tests (H2 in-memory DB)
         working-directory: ./backend
-        run: mvn test -B
-        env:
-          DB_URL: jdbc:postgresql://localhost:5432/blooddonordb_test
-          DB_USERNAME: postgres
-          DB_PASSWORD: postgres
-          JWT_SECRET: test_secret_key_for_ci_pipeline_minimum_32_chars
-          JWT_EXPIRATION: 86400000
+        run: mvn test -B -Dspring.profiles.active=test
 
-      - name: Package application
+      - name: Package JAR
         working-directory: ./backend
         run: mvn package -DskipTests -B
 
@@ -66,8 +44,9 @@ jobs:
         with:
           name: backend-jar
           path: backend/target/*.jar
+          retention-days: 7
 
-  # ── Frontend: Build ──────────────────────────────────────────────────────────
+  # ── Job 2: Frontend Build ────────────────────────────────────────────────────
   frontend-ci:
     name: Frontend — Build
     runs-on: ubuntu-latest
@@ -94,12 +73,18 @@ jobs:
           REACT_APP_API_URL: http://localhost:8080
           CI: false
 
-  # ── Docker: Build & Push ─────────────────────────────────────────────────────
-  docker-push:
-    name: Docker — Build & Push Images
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+          retention-days: 7
+
+  # ── Job 3: Docker Build Verification (build only, no push) ───────────────────
+  docker-build-check:
+    name: Docker — Verify Images Build
     runs-on: ubuntu-latest
     needs: [backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
@@ -108,30 +93,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Build and push backend image
+      - name: Build backend Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          push: false
+          tags: blooddonor-backend:ci-check
 
-      - name: Build and push frontend image
+      - name: Build frontend Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          push: false
+          tags: blooddonor-frontend:ci-check
+
+      - name: CI Summary
+        run: |
+          echo "## CI Pipeline Passed ✅" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend compile | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend JAR package | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend build | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker images build | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **CD (Deploy)** is handled by Jenkins locally via Docker Compose" >> $GITHUB_STEP_SUMMARY
