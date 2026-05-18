@@ -1,28 +1,24 @@
 // ============================================================
 // JENKINSFILE — CD Pipeline (Continuous Deployment)
 //
-// What it does:
-//   Jenkins runs this pipeline to BUILD and DEPLOY the app locally.
-//   It runs inside a Docker container on your machine.
+// Responsibility: BUILD DOCKER IMAGES AND DEPLOY ONLY
+//   Assumes code is already tested by GitHub Actions CI.
+//   Jenkins picks up the code and deploys it to the server.
 //
 // Stages:
-//   1. Checkout   — Get the source code
-//   2. Build      — Compile backend + build frontend
-//   3. Test       — Run backend unit tests
-//   4. Docker     — Build Docker images
-//   5. Deploy     — Start all containers with docker-compose
-//   6. Verify     — Check the app is running
+//   1. Checkout         — Get the source code
+//   2. Build Images     — Build Docker images for backend and frontend
+//   3. Deploy           — Stop old containers, start new ones
+//   4. Health Check     — Verify the app is running
 // ============================================================
 
 pipeline {
 
-    // Run on any available Jenkins agent
     agent any
 
-    // ── Stage definitions ─────────────────────────────────────
     stages {
 
-        // STAGE 1: Get the source code
+        // STAGE 1: Get the latest source code
         stage('Checkout') {
             steps {
                 echo 'Getting source code...'
@@ -30,95 +26,44 @@ pipeline {
             }
         }
 
-        // STAGE 2: Build backend and frontend
-        stage('Build') {
-            parallel {
-
-                // Build Spring Boot backend
-                stage('Build Backend') {
-                    steps {
-                        echo 'Compiling Spring Boot backend...'
-                        dir('backend') {
-                            sh 'mvn clean compile -B -q'
-                        }
-                    }
-                }
-
-                // Build React frontend
-                stage('Build Frontend') {
-                    steps {
-                        echo 'Building React frontend...'
-                        dir('frontend') {
-                            sh 'npm install --silent'
-                            sh 'CI=false npm run build'
-                        }
-                    }
-                }
-            }
-        }
-
-        // STAGE 3: Run backend tests
-        stage('Test') {
-            steps {
-                echo 'Running backend tests...'
-                dir('backend') {
-                    sh 'mvn test -B -Dspring.profiles.active=test'
-                }
-            }
-            post {
-                // Always show test results in Jenkins UI
-                always {
-                    junit allowEmptyResults: true,
-                          testResults: 'backend/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        // STAGE 4: Package backend into JAR
-        stage('Package') {
-            steps {
-                echo 'Packaging backend JAR...'
-                dir('backend') {
-                    sh 'mvn package -DskipTests -B -q'
-                }
-            }
-        }
-
-        // STAGE 5: Build Docker images
+        // STAGE 2: Build Docker images
+        // This packages the backend JAR and React build inside Docker
+        // No separate compile/test step — that is GitHub Actions job
         stage('Build Docker Images') {
             steps {
                 echo 'Building Docker images...'
                 sh 'docker build -t blooddonor-backend:latest ./backend'
                 sh 'docker build -t blooddonor-frontend:latest ./frontend'
+                echo 'Docker images built successfully'
             }
         }
 
-        // STAGE 6: Deploy app containers using Docker Compose
-        // Stop existing containers first, then start fresh
+        // STAGE 3: Deploy using Docker Compose
+        // Stop old running containers and start fresh ones
         stage('Deploy') {
             steps {
-                echo 'Deploying with Docker Compose...'
-                // Stop and remove existing app containers before redeploying
+                echo 'Deploying application...'
+                // Remove old containers if they exist
                 sh 'docker stop blooddonor-postgres blooddonor-backend blooddonor-frontend || true'
                 sh 'docker rm blooddonor-postgres blooddonor-backend blooddonor-frontend || true'
-                // Start fresh
-                sh 'docker compose -f /workspace/docker-compose.yml up -d --build postgres backend frontend'
+                // Start all app containers fresh
+                sh 'docker compose -f /workspace/docker-compose.yml up -d postgres backend frontend'
                 sh 'sleep 15'
                 sh 'docker compose -f /workspace/docker-compose.yml ps'
             }
         }
 
-        // STAGE 7: Check the app is running
+        // STAGE 4: Verify the app is actually running
         stage('Health Check') {
             steps {
                 echo 'Checking if app is running...'
                 sh '''
                     for i in 1 2 3 4 5; do
                         if curl -sf http://localhost:8080/api/requests; then
-                            echo "Backend is UP!"
+                            echo "App is UP and running!"
                             break
                         fi
-                        echo "Waiting... attempt $i"
+                        echo "Waiting... attempt $i of 5"
                         sleep 10
                     done
                 '''
@@ -126,17 +71,15 @@ pipeline {
         }
     }
 
-    // ── After pipeline finishes ───────────────────────────────
     post {
         success {
-            echo 'SUCCESS! App is running at http://localhost:3000'
+            echo 'DEPLOYMENT SUCCESSFUL — App running at http://localhost:3000'
         }
         failure {
-            echo 'FAILED! Stopping app containers...'
-            sh 'docker compose -f /workspace/docker-compose.yml stop postgres backend frontend || true'
+            echo 'DEPLOYMENT FAILED — Stopping containers'
+            sh 'docker stop blooddonor-postgres blooddonor-backend blooddonor-frontend || true'
         }
         always {
-            // Clean up workspace after every build
             cleanWs()
         }
     }
