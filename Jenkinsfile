@@ -94,10 +94,14 @@ pipeline {
         }
 
         // STAGE 6: Deploy app containers using Docker Compose
-        // We specify service names explicitly so Jenkins never tries to restart itself
+        // Stop existing containers first, then start fresh
         stage('Deploy') {
             steps {
                 echo 'Deploying with Docker Compose...'
+                // Stop and remove existing app containers before redeploying
+                sh 'docker stop blooddonor-postgres blooddonor-backend blooddonor-frontend || true'
+                sh 'docker rm blooddonor-postgres blooddonor-backend blooddonor-frontend || true'
+                // Start fresh
                 sh 'docker compose -f /workspace/docker-compose.yml up -d --build postgres backend frontend'
                 sh 'sleep 15'
                 sh 'docker compose -f /workspace/docker-compose.yml ps'
