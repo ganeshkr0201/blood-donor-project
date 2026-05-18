@@ -1,5 +1,18 @@
+# ============================================================
+# DOCKER COMPOSE — Runs all 4 services together
+#
+# Services:
+#   1. postgres  — Database          → port 5433
+#   2. backend   — Spring Boot API   → port 8080
+#   3. frontend  — React + nginx     → port 3000
+#   4. jenkins   — CI/CD server      → port 8090
+#
+# Run everything with: docker-compose up --build
+# ============================================================
+
 services:
-  # ── PostgreSQL Database ──────────────────────────────────────────────────────
+
+  # ── 1. PostgreSQL Database ──────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: blooddonor-postgres
@@ -7,33 +20,34 @@ services:
       POSTGRES_DB: blooddonordb
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    volumes:
+      # Save database data even if container is stopped/restarted
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - blooddonor-network
+    # Health check: wait until postgres is ready before starting backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d blooddonordb"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d blooddonordb"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ── Spring Boot Backend ──────────────────────────────────────────────────────
+  # ── 2. Spring Boot Backend ──────────────────────────────────
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: blooddonor-backend
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/blooddonordb
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:-blooddonorsystemsecretkey2024verylongsecretkey}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
-      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      JWT_EXPIRATION: 86400000
+      CORS_ORIGINS: http://localhost:3000
     ports:
       - "8080:8080"
+    # Backend starts only AFTER postgres is healthy
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,52 +55,43 @@ services:
       - blooddonor-network
     restart: unless-stopped
 
-  # ── React Frontend ────────────────────────────────────────────────────────────
+  # ── 3. React Frontend ───────────────────────────────────────
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     container_name: blooddonor-frontend
-    environment:
-      REACT_APP_API_URL: http://localhost:8080
     ports:
       - "3000:3000"
+    # Frontend starts after backend is up
     depends_on:
       - backend
     networks:
       - blooddonor-network
     restart: unless-stopped
 
-  # ── Jenkins CI/CD Server ──────────────────────────────────────────────────────
+  # ── 4. Jenkins CI/CD Server ─────────────────────────────────
   jenkins:
-    build:
-      context: ./jenkins
-      dockerfile: Dockerfile
+    build: ./jenkins
     container_name: blooddonor-jenkins
     ports:
-      - "8090:8080"   # Jenkins UI  → http://localhost:8090
-      - "50000:50000" # Jenkins agent port
+      - "8090:8080"    # Jenkins UI at http://localhost:8090
+      - "50000:50000"  # Jenkins agent communication port
     volumes:
-      # Persist Jenkins data (jobs, builds, plugins) across restarts
+      # Keep Jenkins data (jobs, builds) when container restarts
       - jenkins_data:/var/jenkins_home
-      # Mount host Docker socket so Jenkins can run docker commands
+      # Allow Jenkins to run Docker commands on the host machine
       - /var/run/docker.sock:/var/run/docker.sock
-      # Mount the project source so Jenkins can build it
+      # Give Jenkins access to the project source code
       - .:/workspace
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
     networks:
       - blooddonor-network
     restart: unless-stopped
 
-# ── Volumes ───────────────────────────────────────────────────────────────────
+# ── Volumes (persistent storage) ────────────────────────────
 volumes:
-  postgres_data:
-    driver: local
-  jenkins_data:       # Persists Jenkins config, jobs, and build history
-    driver: local
+  postgres_data:   # Stores database tables and data
+  jenkins_data:    # Stores Jenkins jobs, builds, plugins
 
-# ── Networks ──────────────────────────────────────────────────────────────────
+# ── Network (containers talk to each other by name) ─────────
 networks:
   blooddonor-network:
     driver: bridge

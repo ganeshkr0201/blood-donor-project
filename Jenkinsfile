@@ -1,171 +1,138 @@
+// ============================================================
+// JENKINSFILE — CD Pipeline (Continuous Deployment)
+//
+// What it does:
+//   Jenkins runs this pipeline to BUILD and DEPLOY the app locally.
+//   It runs inside a Docker container on your machine.
+//
+// Stages:
+//   1. Checkout   — Get the source code
+//   2. Build      — Compile backend + build frontend
+//   3. Test       — Run backend unit tests
+//   4. Docker     — Build Docker images
+//   5. Deploy     — Start all containers with docker-compose
+//   6. Verify     — Check the app is running
+// ============================================================
+
 pipeline {
+
+    // Run on any available Jenkins agent
     agent any
 
-    // ── Global options ────────────────────────────────────────────────────────
-    options {
-        timestamps()                        // Add timestamps to every log line
-        ansiColor('xterm')                  // Coloured console output
-        timeout(time: 30, unit: 'MINUTES')  // Fail the build if it hangs
-        buildDiscarder(logRotator(numToKeepStr: '10')) // Keep last 10 builds
-    }
-
-    // ── Environment variables available to all stages ─────────────────────────
-    environment {
-        APP_NAME        = 'blood-donor-system'
-        BACKEND_IMAGE   = 'blooddonor-backend'
-        FRONTEND_IMAGE  = 'blooddonor-frontend'
-        COMPOSE_FILE    = 'docker-compose.yml'
-    }
-
-    // ── Pipeline stages ───────────────────────────────────────────────────────
+    // ── Stage definitions ─────────────────────────────────────
     stages {
 
-        // ── Stage 1: Checkout ─────────────────────────────────────────────────
+        // STAGE 1: Get the source code
         stage('Checkout') {
             steps {
-                echo '📥 Checking out source code...'
+                echo 'Getting source code...'
                 checkout scm
-                sh 'echo "Branch: $(git rev-parse --abbrev-ref HEAD)"'
-                sh 'echo "Commit: $(git rev-parse --short HEAD)"'
             }
         }
 
-        // ── Stage 2: Build Backend ────────────────────────────────────────────
-        stage('Build Backend') {
-            steps {
-                echo '☕ Building Spring Boot backend with Maven...'
-                dir('backend') {
-                    sh 'mvn clean compile -B -q'
+        // STAGE 2: Build backend and frontend
+        stage('Build') {
+            parallel {
+
+                // Build Spring Boot backend
+                stage('Build Backend') {
+                    steps {
+                        echo 'Compiling Spring Boot backend...'
+                        dir('backend') {
+                            sh 'mvn clean compile -B -q'
+                        }
+                    }
+                }
+
+                // Build React frontend
+                stage('Build Frontend') {
+                    steps {
+                        echo 'Building React frontend...'
+                        dir('frontend') {
+                            sh 'npm install --silent'
+                            sh 'CI=false npm run build'
+                        }
+                    }
                 }
             }
         }
 
-        // ── Stage 3: Test Backend ─────────────────────────────────────────────
-        stage('Test Backend') {
+        // STAGE 3: Run backend tests
+        stage('Test') {
             steps {
-                echo '🧪 Running backend unit tests...'
+                echo 'Running backend tests...'
                 dir('backend') {
-                    sh 'mvn test -B'
+                    sh 'mvn test -B -Dspring.profiles.active=test'
                 }
             }
             post {
+                // Always show test results in Jenkins UI
                 always {
-                    // Publish JUnit test results in Jenkins UI
                     junit allowEmptyResults: true,
                           testResults: 'backend/target/surefire-reports/*.xml'
                 }
-                failure {
-                    echo '❌ Tests failed! Check the test report above.'
-                }
             }
         }
 
-        // ── Stage 4: Package Backend ──────────────────────────────────────────
-        stage('Package Backend') {
+        // STAGE 4: Package backend into JAR
+        stage('Package') {
             steps {
-                echo '📦 Packaging backend JAR...'
+                echo 'Packaging backend JAR...'
                 dir('backend') {
                     sh 'mvn package -DskipTests -B -q'
-                    sh 'ls -lh target/*.jar'
                 }
             }
         }
 
-        // ── Stage 5: Build Frontend ───────────────────────────────────────────
-        stage('Build Frontend') {
-            steps {
-                echo '⚛️  Building React frontend...'
-                dir('frontend') {
-                    sh 'npm install --silent'
-                    sh 'CI=false npm run build'
-                    sh 'echo "Build size: $(du -sh build/)"'
-                }
-            }
-        }
-
-        // ── Stage 6: Build Docker Images ──────────────────────────────────────
+        // STAGE 5: Build Docker images
         stage('Build Docker Images') {
             steps {
-                echo '🐳 Building Docker images...'
-                sh '''
-                    docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} \
-                                 -t ${BACKEND_IMAGE}:latest \
-                                 ./backend
-                '''
-                sh '''
-                    docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} \
-                                 -t ${FRONTEND_IMAGE}:latest \
-                                 ./frontend
-                '''
-                sh 'docker images | grep -E "blooddonor|REPOSITORY"'
+                echo 'Building Docker images...'
+                sh 'docker build -t blooddonor-backend:latest ./backend'
+                sh 'docker build -t blooddonor-frontend:latest ./frontend'
             }
         }
 
-        // ── Stage 7: Deploy with Docker Compose ───────────────────────────────
+        // STAGE 6: Deploy using Docker Compose
         stage('Deploy') {
             steps {
-                echo '🚀 Deploying application with Docker Compose...'
-                sh '''
-                    # Stop existing containers gracefully
-                    docker compose -f ${COMPOSE_FILE} down --remove-orphans || true
-
-                    # Start all services fresh
-                    docker compose -f ${COMPOSE_FILE} up -d --build
-
-                    # Wait for services to be healthy
-                    echo "Waiting for services to start..."
-                    sleep 15
-
-                    # Show running containers
-                    docker compose -f ${COMPOSE_FILE} ps
-                '''
+                echo 'Deploying with Docker Compose...'
+                sh 'docker compose down --remove-orphans || true'
+                sh 'docker compose up -d --build'
+                sh 'sleep 15'
+                sh 'docker compose ps'
             }
         }
 
-        // ── Stage 8: Health Check ─────────────────────────────────────────────
+        // STAGE 7: Check the app is running
         stage('Health Check') {
             steps {
-                echo '🏥 Verifying application is running...'
+                echo 'Checking if app is running...'
                 sh '''
-                    # Check backend API is responding
                     for i in 1 2 3 4 5; do
-                        if curl -sf http://localhost:8080/api/requests > /dev/null 2>&1; then
-                            echo "✅ Backend is healthy!"
+                        if curl -sf http://localhost:8080/api/requests; then
+                            echo "Backend is UP!"
                             break
                         fi
-                        echo "Attempt $i: Backend not ready yet, waiting..."
+                        echo "Waiting... attempt $i"
                         sleep 10
                     done
-
-                    # Check frontend is serving
-                    if curl -sf http://localhost:3000 > /dev/null 2>&1; then
-                        echo "✅ Frontend is healthy!"
-                    else
-                        echo "⚠️  Frontend check failed — may still be starting"
-                    fi
                 '''
             }
         }
     }
 
-    // ── Post-build actions ────────────────────────────────────────────────────
+    // ── After pipeline finishes ───────────────────────────────
     post {
         success {
-            echo '''
-            ╔══════════════════════════════════════╗
-            ║  ✅ BUILD SUCCESSFUL                  ║
-            ║  App running at http://localhost:3000 ║
-            ║  API running at http://localhost:8080 ║
-            ╚══════════════════════════════════════╝
-            '''
+            echo 'SUCCESS! App is running at http://localhost:3000'
         }
         failure {
-            echo '❌ BUILD FAILED — Check the logs above for details'
-            // Stop containers if deploy failed
-            sh 'docker compose -f ${COMPOSE_FILE} down || true'
+            echo 'FAILED! Stopping containers...'
+            sh 'docker compose down || true'
         }
         always {
-            // Clean up workspace to save disk space
+            // Clean up workspace after every build
             cleanWs()
         }
     }
