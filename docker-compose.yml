@@ -1,22 +1,6 @@
-# ============================================================
-# DOCKER COMPOSE — Runs all services together
-#
-# App services (postgres + backend + frontend):
-#   docker-compose up --build
-#
-# Everything including Jenkins:
-#   docker-compose --profile jenkins up --build
-#
-# Services:
-#   1. postgres  — Database        → port 5433
-#   2. backend   — Spring Boot API → port 8080
-#   3. frontend  — React + nginx   → port 3000
-#   4. jenkins   — CI/CD server    → port 8090 (only with --profile jenkins)
-# ============================================================
 
 services:
 
-  # ── 1. PostgreSQL Database ──────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: blooddonor-postgres
@@ -36,7 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── 2. Spring Boot Backend ──────────────────────────────────
   backend:
     build: ./backend
     container_name: blooddonor-backend
@@ -56,7 +39,6 @@ services:
       - blooddonor-network
     restart: unless-stopped
 
-  # ── 3. React Frontend ───────────────────────────────────────
   frontend:
     build: ./frontend
     container_name: blooddonor-frontend
@@ -68,9 +50,6 @@ services:
       - blooddonor-network
     restart: unless-stopped
 
-  # ── 4. Jenkins CI/CD Server ─────────────────────────────────
-  # Only starts when you run: docker-compose --profile jenkins up
-  # This prevents Jenkins from conflicting with itself during pipeline runs
   jenkins:
     profiles: ["jenkins"]
     build: ./jenkins
@@ -86,12 +65,10 @@ services:
       - blooddonor-network
     restart: unless-stopped
 
-# ── Volumes ──────────────────────────────────────────────────
 volumes:
   postgres_data:
   jenkins_data:
 
-# ── Network ──────────────────────────────────────────────────
 networks:
   blooddonor-network:
     driver: bridge
