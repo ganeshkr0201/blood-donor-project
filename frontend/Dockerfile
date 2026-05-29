@@ -16,6 +16,8 @@ RUN npm install --silent
 # Copy source code and build the production bundle
 COPY . .
 ENV CI=false
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
 RUN npm run build
 
 # ============================================================

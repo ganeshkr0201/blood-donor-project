@@ -1,0 +1,82 @@
+# ============================================================
+# PRODUCTION DOCKER COMPOSE CONFIGURATION
+# Designed for AWS EC2 Deployment (Option A)
+# ============================================================
+
+services:
+
+  # 1. Database Service (Hidden from public internet)
+  postgres:
+    image: postgres:16-alpine
+    container_name: blooddonor-postgres-prod
+    environment:
+      POSTGRES_DB: blooddonordb
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - blooddonor-prod-network
+    # No ports exposed to the host! Only backend can access inside network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d blooddonordb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # 2. Backend Service (Hidden from public internet)
+  backend:
+    build: ./backend
+    container_name: blooddonor-backend-prod
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/blooddonordb
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 86400000
+      CORS_ORIGINS: "*" # CORS issues are avoided since we proxy on same port
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - blooddonor-prod-network
+    # No ports exposed to host. Nginx reverse proxies traffic inside the network.
+    restart: always
+
+  # 3. Frontend Service (Hidden from public internet)
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=/
+    container_name: blooddonor-frontend-prod
+    depends_on:
+      - backend
+    networks:
+      - blooddonor-prod-network
+    # No ports exposed to host. Nginx reverse proxies traffic inside the network.
+    restart: always
+
+  # 4. Nginx Reverse Proxy (The only public service)
+  nginx:
+    image: nginx:alpine
+    container_name: blooddonor-nginx-prod
+    ports:
+      - "80:80"
+      # - "443:443" # Uncomment when SSL is configured
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - blooddonor-prod-network
+    restart: always
+
+volumes:
+  postgres_prod_data:
+
+networks:
+  blooddonor-prod-network:
+    driver: bridge

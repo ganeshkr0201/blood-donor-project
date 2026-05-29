@@ -6,12 +6,12 @@ import { donorAPI, requestAPI } from '../services/api';
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 const StatCard = ({ value, label, icon, color }) => (
-  <div className="card p-6 text-center">
+  <div className="p-6 text-center card">
     <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center mx-auto mb-3`}>
       {icon}
     </div>
     <div className="text-3xl font-extrabold text-slate-800">{value}</div>
-    <div className="text-slate-500 text-sm mt-1">{label}</div>
+    <div className="mt-1 text-sm text-slate-500">{label}</div>
   </div>
 );
 
@@ -38,36 +38,36 @@ const Home = () => {
     <div className="min-h-screen bg-slate-50">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-rose-800 text-white">
+      <section className="relative overflow-hidden text-white bg-gradient-to-br from-red-600 via-red-700 to-rose-800">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/5 rounded-full" />
-          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-white/5 rounded-full" />
+          <div className="absolute rounded-full -top-40 -right-40 w-96 h-96 bg-white/5" />
+          <div className="absolute rounded-full -bottom-20 -left-20 w-72 h-72 bg-white/5" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/3 rounded-full" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+        <div className="relative max-w-6xl px-4 py-24 mx-auto sm:px-6 lg:px-8 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
-              <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Live donor network — find help instantly
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight tracking-tight mb-6">
-              Every Drop of Blood
+            <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
+              Every Drop of Bloods
               <br />
               <span className="text-red-200">Saves a Life</span>
             </h1>
-            <p className="text-lg sm:text-xl text-red-100 mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="max-w-2xl mx-auto mb-10 text-lg leading-relaxed text-red-100 sm:text-xl">
               Connect with verified blood donors in your city within minutes.
               Post emergency requests and get responses fast.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <Link
                 to="/search"
-                className="inline-flex items-center justify-center gap-2 bg-white text-red-600 px-8 py-4 rounded-xl font-bold text-base hover:bg-red-50 transition-all shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-red-600 transition-all bg-white shadow-lg rounded-xl hover:bg-red-50 hover:shadow-xl"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -76,7 +76,7 @@ const Home = () => {
               </Link>
               <Link
                 to="/emergency"
-                className="inline-flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-white/20 transition-all"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-white transition-all border-2 bg-white/10 backdrop-blur-sm border-white/30 rounded-xl hover:bg-white/20"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -89,13 +89,13 @@ const Home = () => {
 
         {/* Blood group pills */}
         <div className="relative border-t border-white/10 bg-white/5 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-center gap-3 flex-wrap">
-            <span className="text-white/60 text-sm font-medium mr-2">All blood groups:</span>
+          <div className="flex flex-wrap items-center justify-center max-w-6xl gap-3 px-4 py-4 mx-auto">
+            <span className="mr-2 text-sm font-medium text-white/60">All blood groups:</span>
             {BLOOD_GROUPS.map((bg) => (
               <Link
                 key={bg}
                 to={`/search?bloodGroup=${encodeURIComponent(bg)}`}
-                className="bg-white/15 hover:bg-white/25 border border-white/20 text-white text-sm font-bold px-3 py-1 rounded-lg transition-colors"
+                className="px-3 py-1 text-sm font-bold text-white transition-colors border rounded-lg bg-white/15 hover:bg-white/25 border-white/20"
               >
                 {bg}
               </Link>
@@ -105,8 +105,8 @@ const Home = () => {
       </section>
 
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
-      <section className="py-16 px-4">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+      <section className="px-4 py-16">
+        <div className="grid max-w-5xl grid-cols-2 gap-4 mx-auto md:grid-cols-4">
           <StatCard
             value={stats.donors > 0 ? `${stats.donors}+` : '—'}
             label="Registered Donors"
@@ -135,13 +135,13 @@ const Home = () => {
       </section>
 
       {/* ── How it works ──────────────────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-white">
+      <section className="px-4 py-16 bg-white">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold text-slate-800">How It Works</h2>
-            <p className="text-slate-500 mt-2">Three simple steps to save a life</p>
+            <p className="mt-2 text-slate-500">Three simple steps to save a life</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {[
               {
                 step: '01',
@@ -178,13 +178,13 @@ const Home = () => {
               },
             ].map((item) => (
               <div key={item.step} className="relative">
-                <div className="card p-6">
+                <div className="p-6 card">
                   <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-4 shadow-sm`}>
                     {item.icon}
                   </div>
-                  <div className="text-xs font-bold text-slate-300 mb-1 tracking-widest">STEP {item.step}</div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">{item.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                  <div className="mb-1 text-xs font-bold tracking-widest text-slate-300">STEP {item.step}</div>
+                  <h3 className="mb-2 text-lg font-bold text-slate-800">{item.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-500">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -193,21 +193,21 @@ const Home = () => {
       </section>
 
       {/* ── Blood Group Info ───────────────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-slate-50">
+      <section className="px-4 py-16 bg-slate-50">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
+          <div className="mb-10 text-center">
             <h2 className="text-3xl font-bold text-slate-800">Find by Blood Group</h2>
-            <p className="text-slate-500 mt-2">Click any blood group to search available donors</p>
+            <p className="mt-2 text-slate-500">Click any blood group to search available donors</p>
           </div>
-          <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+          <div className="grid grid-cols-4 gap-3 md:grid-cols-8">
             {BLOOD_GROUPS.map((bg) => (
               <Link
                 key={bg}
                 to={`/search?bloodGroup=${encodeURIComponent(bg)}`}
-                className="card-hover p-4 text-center group"
+                className="p-4 text-center card-hover group"
               >
                 <div className="text-2xl font-extrabold text-red-600 group-hover:text-red-700">{bg}</div>
-                <div className="text-xs text-slate-400 mt-1">Search</div>
+                <div className="mt-1 text-xs text-slate-400">Search</div>
               </Link>
             ))}
           </div>
@@ -216,22 +216,22 @@ const Home = () => {
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       {!isAuthenticated() && (
-        <section className="py-20 px-4 bg-gradient-to-br from-red-600 to-rose-700 text-white">
+        <section className="px-4 py-20 text-white bg-gradient-to-br from-red-600 to-rose-700">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Ready to Make a Difference?</h2>
-            <p className="text-red-100 mb-8 text-lg">
+            <h2 className="mb-4 text-3xl font-extrabold md:text-4xl">Ready to Make a Difference?</h2>
+            <p className="mb-8 text-lg text-red-100">
               Join our community of donors. Your blood can save up to 3 lives.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <Link
                 to="/register"
-                className="inline-flex items-center justify-center gap-2 bg-white text-red-600 px-8 py-4 rounded-xl font-bold text-base hover:bg-red-50 transition-all shadow-lg"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-red-600 transition-all bg-white shadow-lg rounded-xl hover:bg-red-50"
               >
                 Register as Donor
               </Link>
               <Link
                 to="/search"
-                className="inline-flex items-center justify-center gap-2 bg-white/10 border-2 border-white/30 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-white/20 transition-all"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-white transition-all border-2 bg-white/10 border-white/30 rounded-xl hover:bg-white/20"
               >
                 Find Donors Now
               </Link>
@@ -241,21 +241,21 @@ const Home = () => {
       )}
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="bg-slate-900 text-slate-400 py-10 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="px-4 py-10 bg-slate-900 text-slate-400">
+        <div className="flex flex-col items-center justify-between max-w-6xl gap-4 mx-auto md:flex-row">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center">
+            <div className="flex items-center justify-center bg-red-600 rounded-lg w-7 h-7">
               <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C12 2 4 10 4 15a8 8 0 0016 0C20 10 12 2 12 2z"/>
               </svg>
             </div>
-            <span className="text-white font-bold">BloodFinder</span>
+            <span className="font-bold text-white">BloodFinder</span>
           </div>
           <p className="text-sm">© 2024 BloodFinder. Saving lives, one donation at a time.</p>
           <div className="flex gap-5 text-sm">
-            <Link to="/search" className="hover:text-white transition-colors">Find Donors</Link>
-            <Link to="/emergency" className="hover:text-white transition-colors">Emergency</Link>
-            <Link to="/register" className="hover:text-white transition-colors">Register</Link>
+            <Link to="/search" className="transition-colors hover:text-white">Find Donors</Link>
+            <Link to="/emergency" className="transition-colors hover:text-white">Emergency</Link>
+            <Link to="/register" className="transition-colors hover:text-white">Register</Link>
           </div>
         </div>
       </footer>
