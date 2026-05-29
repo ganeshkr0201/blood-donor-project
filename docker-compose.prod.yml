@@ -1,6 +1,6 @@
 # ============================================================
 # PRODUCTION DOCKER COMPOSE CONFIGURATION
-# Designed for AWS EC2 Deployment (Option A)
+# Designed for Production Deployment
 # ============================================================
 
 services:

@@ -1,4 +1,6 @@
 
+name: blood-donor-system
+
 services:
 
   postgres:

@@ -55,7 +55,7 @@ const Home = () => {
             </div>
 
             <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
-              Every Drop of Bloods
+              Each Drop of Blood
               <br />
               <span className="text-red-200">Saves a Life</span>
             </h1>
